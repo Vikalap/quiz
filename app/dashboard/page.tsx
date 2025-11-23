@@ -22,6 +22,7 @@ import {
   type QuizHistoryEntry,
 } from "@/lib/quiz-history";
 import { categories } from "@/lib/quiz-data";
+import { calculateLevel, getTotalXP, getUnlockedBadges } from "@/lib/leveling-system";
 
 export default function Dashboard() {
   const { isAuthenticated, user, getRemainingFreeQuizzes } = useAuth();
@@ -35,6 +36,7 @@ export default function Dashboard() {
     categoriesCompleted: 0,
   });
   const [recentQuizzes, setRecentQuizzes] = useState<QuizHistoryEntry[]>([]);
+  const [userLevel, setUserLevel] = useState(calculateLevel(getTotalXP()));
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -55,6 +57,7 @@ export default function Dashboard() {
         currentStreak: getCurrentStreak(),
         categoriesCompleted: getCategoriesCompleted().length,
       });
+      setUserLevel(calculateLevel(getTotalXP()));
     }
   }, [isAuthenticated, router, user?.quizzesCompleted]);
 
@@ -99,12 +102,18 @@ export default function Dashboard() {
               Track your progress and achievements
             </p>
           </div>
-          {isFreeUser && (
-            <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/50 px-4 py-2">
-              <Zap className="mr-2 h-4 w-4" />
-              {remaining > 0 ? `${remaining} free left` : "Upgrade to Pro"}
+          <div className="flex items-center gap-3">
+            <Badge className="bg-linear-to-r from-yellow-600/20 to-orange-600/20 text-yellow-400 border-yellow-500/50 px-4 py-2">
+              <Award className="mr-2 h-4 w-4" />
+              Level {userLevel.level}
             </Badge>
-          )}
+            {isFreeUser && (
+              <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/50 px-4 py-2">
+                <Zap className="mr-2 h-4 w-4" />
+                {remaining > 0 ? `${remaining} free left` : "Upgrade to Pro"}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
