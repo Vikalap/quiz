@@ -15,11 +15,28 @@ export function saveQuizHistory(entry: Omit<QuizHistoryEntry, "id" | "completedA
   if (typeof window === "undefined") return;
   
   const history = getQuizHistory();
+  const now = new Date();
   const newEntry: QuizHistoryEntry = {
     ...entry,
-    id: Date.now().toString(),
-    completedAt: new Date().toISOString(),
+    id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Unique ID
+    completedAt: now.toISOString(),
   };
+  
+  // Check for duplicates: same category within the last 2 seconds (prevent rapid duplicates)
+  const twoSecondsAgo = now.getTime() - 2000;
+  const isDuplicate = history.some(existing => {
+    const existingTime = new Date(existing.completedAt).getTime();
+    return (
+      existing.category === newEntry.category &&
+      existing.score === newEntry.score &&
+      existing.correctAnswers === newEntry.correctAnswers &&
+      existingTime > twoSecondsAgo
+    );
+  });
+  
+  if (isDuplicate) {
+    return; // Don't save duplicate
+  }
   
   history.unshift(newEntry); // Add to beginning
   // Keep only last 100 entries
@@ -37,6 +54,45 @@ export function getQuizHistory(): QuizHistoryEntry[] {
   } catch {
     return [];
   }
+}
+
+export function removeDuplicateQuizzes(): void {
+  if (typeof window === "undefined") return;
+  
+  const history = getQuizHistory();
+  const seen = new Map<string, QuizHistoryEntry>();
+  const unique: QuizHistoryEntry[] = [];
+  
+  // Keep only the first occurrence of each unique quiz (same category, score, and time within 5 seconds)
+  for (const entry of history) {
+    const key = `${entry.category}-${entry.score}-${entry.correctAnswers}`;
+    const entryTime = new Date(entry.completedAt).getTime();
+    
+    const existing = seen.get(key);
+    if (!existing) {
+      seen.set(key, entry);
+      unique.push(entry);
+    } else {
+      // If we find a duplicate, keep the one with the most recent timestamp
+      const existingTime = new Date(existing.completedAt).getTime();
+      if (Math.abs(entryTime - existingTime) < 5000) {
+        // Within 5 seconds, it's a duplicate
+        if (entryTime > existingTime) {
+          // Replace with newer one
+          const index = unique.indexOf(existing);
+          if (index !== -1) {
+            unique[index] = entry;
+            seen.set(key, entry);
+          }
+        }
+      } else {
+        // Not a duplicate, add it
+        unique.push(entry);
+      }
+    }
+  }
+  
+  localStorage.setItem(QUIZ_HISTORY_KEY, JSON.stringify(unique));
 }
 
 export function getRecentQuizzes(limit: number = 10): QuizHistoryEntry[] {

@@ -18,6 +18,7 @@ import {
   getAchievements,
   formatTimeAgo,
   formatTime,
+  removeDuplicateQuizzes,
   type QuizHistoryEntry,
 } from "@/lib/quiz-history";
 import { categories } from "@/lib/quiz-data";
@@ -39,6 +40,9 @@ export default function Dashboard() {
     if (!isAuthenticated) {
       router.push("/login?redirect=/dashboard");
     } else {
+      // Clean up any existing duplicates
+      removeDuplicateQuizzes();
+      
       // Load dynamic stats
       const history = getRecentQuizzes(10);
       setRecentQuizzes(history);
