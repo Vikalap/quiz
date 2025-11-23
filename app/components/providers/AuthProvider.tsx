@@ -17,6 +17,8 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   getRemainingFreeQuizzes: () => number;
+  canTakeQuiz: () => boolean;
+  incrementQuizCount: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -125,8 +127,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user.plan === "pro" || user.plan === "premium") {
       return Infinity; // Unlimited for paid plans
     }
+    // Use quiz history count for accurate tracking
+    if (typeof window !== "undefined") {
+      try {
+        const { getQuizHistory } = require("@/lib/quiz-history");
+        const history = getQuizHistory();
+        const completed = history.length;
+        return Math.max(0, FREE_QUIZ_LIMIT - completed);
+      } catch {
+        // Fallback to user object if quiz history not available
+        const completed = user.quizzesCompleted || 0;
+        return Math.max(0, FREE_QUIZ_LIMIT - completed);
+      }
+    }
     const completed = user.quizzesCompleted || 0;
     return Math.max(0, FREE_QUIZ_LIMIT - completed);
+  };
+
+  const canTakeQuiz = (): boolean => {
+    if (!user) return false;
+    if (user.plan === "pro" || user.plan === "premium") {
+      return true; // Unlimited for paid plans
+    }
+    // Use quiz history count for accurate tracking
+    if (typeof window !== "undefined") {
+      try {
+        const { getQuizHistory } = require("@/lib/quiz-history");
+        const history = getQuizHistory();
+        return history.length < FREE_QUIZ_LIMIT;
+      } catch {
+        // Fallback to user object if quiz history not available
+        const completed = user.quizzesCompleted || 0;
+        return completed < FREE_QUIZ_LIMIT;
+      }
+    }
+    const completed = user.quizzesCompleted || 0;
+    return completed < FREE_QUIZ_LIMIT;
+  };
+
+  const incrementQuizCount = (): void => {
+    if (user) {
+      const currentCount = user.quizzesCompleted || 0;
+      updateUser({ quizzesCompleted: currentCount + 1 });
+    }
   };
 
   return (
@@ -139,6 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         updateUser,
         getRemainingFreeQuizzes,
+        canTakeQuiz,
+        incrementQuizCount,
       }}
     >
       {children}

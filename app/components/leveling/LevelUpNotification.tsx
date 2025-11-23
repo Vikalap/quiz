@@ -95,3 +95,4 @@ export function LevelUpNotification({ newLevel, newBadges = [], onClose }: Level
   );
 }
 
+

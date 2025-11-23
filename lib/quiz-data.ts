@@ -344,3 +344,4 @@ export const quizData: Record<string, QuizCategory> = {
 export const categories = Object.values(quizData);
 
 
+

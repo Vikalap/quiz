@@ -10,11 +10,25 @@ import { useRouter } from "next/navigation";
 export default function Store() {
   const { isAuthenticated, user, updateUser, getRemainingFreeQuizzes } = useAuth();
   const router = useRouter();
-  const remaining = getRemainingFreeQuizzes();
-  const quizzesCompleted = user?.quizzesCompleted || 0;
-  const FREE_QUIZ_LIMIT = 12;
-  const progress = (quizzesCompleted / FREE_QUIZ_LIMIT) * 100;
   const isFreeUser = user?.plan === "free" || !user?.plan;
+  const FREE_QUIZ_LIMIT = 12;
+  
+  // Use quiz history for accurate count
+  let quizzesCompleted = 0;
+  if (typeof window !== "undefined") {
+    try {
+      const { getQuizHistory } = require("@/lib/quiz-history");
+      const history = getQuizHistory();
+      quizzesCompleted = history.length;
+    } catch {
+      quizzesCompleted = user?.quizzesCompleted || 0;
+    }
+  } else {
+    quizzesCompleted = user?.quizzesCompleted || 0;
+  }
+  
+  const remaining = getRemainingFreeQuizzes();
+  const progress = (quizzesCompleted / FREE_QUIZ_LIMIT) * 100;
 
   const handlePurchase = (planName: string) => {
     if (!isAuthenticated) {

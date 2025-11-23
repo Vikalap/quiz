@@ -207,8 +207,28 @@ export function checkBadgeUnlocks(
       case "perfect-score":
         shouldUnlock = progress.perfectScores >= 1;
         break;
+      case "speed-demon":
+        // Check if any quiz was completed in under 5 minutes (300 seconds)
+        if (typeof window !== "undefined") {
+          const { getQuizHistory } = require("./quiz-history");
+          const history = getQuizHistory();
+          shouldUnlock = history.some((e: any) => e.timeSpent < 300);
+        }
+        break;
       case "quiz-master":
         shouldUnlock = progress.quizzesCompleted >= 10;
+        break;
+      case "category-expert":
+        // Check if user has perfect scores in all categories
+        if (typeof window !== "undefined") {
+          const { getQuizHistory } = require("./quiz-history");
+          const { categories } = require("./quiz-data");
+          const history = getQuizHistory();
+          const perfectCategories = new Set(
+            history.filter((e: any) => e.score === 100).map((e: any) => e.category)
+          );
+          shouldUnlock = perfectCategories.size >= categories.length;
+        }
         break;
       case "streak-master":
         shouldUnlock = progress.streak >= 7;
@@ -235,5 +255,106 @@ export function checkLevelUp(oldXp: number, newXp: number): number | null {
   }
   
   return null;
+}
+
+// Storage keys
+const XP_STORAGE_KEY = "quizhub_user_xp";
+const BADGES_STORAGE_KEY = "quizhub_user_badges";
+
+/**
+ * Get user's total XP from storage
+ */
+export function getUserXp(): number {
+  if (typeof window === "undefined") return 0;
+  
+  try {
+    const stored = localStorage.getItem(XP_STORAGE_KEY);
+    return stored ? parseInt(stored, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Add XP to user's total
+ */
+export function addUserXp(amount: number): number {
+  if (typeof window === "undefined") return 0;
+  
+  const currentXp = getUserXp();
+  const newXp = currentXp + amount;
+  localStorage.setItem(XP_STORAGE_KEY, newXp.toString());
+  return newXp;
+}
+
+/**
+ * Get user's unlocked badges from storage
+ */
+export function getUserBadges(): Badge[] {
+  if (typeof window === "undefined") return [];
+  
+  try {
+    const stored = localStorage.getItem(BADGES_STORAGE_KEY);
+    if (!stored) return [];
+    const badgeIds: string[] = JSON.parse(stored);
+    return availableBadges.filter(badge => badgeIds.includes(badge.id));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Unlock a badge and save to storage
+ */
+export function unlockBadge(badgeId: string): boolean {
+  if (typeof window === "undefined") return false;
+  
+  const currentBadges = getUserBadges();
+  if (currentBadges.some(b => b.id === badgeId)) {
+    return false; // Already unlocked
+  }
+  
+  const badge = availableBadges.find(b => b.id === badgeId);
+  if (!badge) return false;
+  
+  const badgeIds = currentBadges.map(b => b.id).concat([badgeId]);
+  localStorage.setItem(BADGES_STORAGE_KEY, JSON.stringify(badgeIds));
+  return true;
+}
+
+/**
+ * Get user progress from storage and quiz history
+ */
+export function getUserProgress(): UserProgress {
+  if (typeof window === "undefined") {
+    return {
+      level: 1,
+      xp: 0,
+      totalXp: 0,
+      badges: [],
+      quizzesCompleted: 0,
+      perfectScores: 0,
+      streak: 0,
+    };
+  }
+  
+  const { getQuizHistory, getCurrentStreak } = require("./quiz-history");
+  const history = getQuizHistory();
+  const totalXp = getUserXp();
+  const level = getLevelFromXp(totalXp);
+  const badges = getUserBadges();
+  
+  const perfectScores = history.filter((e: any) => e.score === 100).length;
+  const streak = getCurrentStreak();
+  
+  return {
+    level,
+    xp: totalXp - getTotalXpForLevel(level),
+    totalXp,
+    badges,
+    quizzesCompleted: history.length,
+    perfectScores,
+    streak,
+  };
 }
 
