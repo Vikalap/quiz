@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { useAuth } from "../components/providers/AuthProvider";
@@ -9,88 +9,40 @@ import { Trophy, Target, Clock, TrendingUp, Award, BookOpen, Zap, Crown } from "
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import Link from "next/link";
-import {
-  getRecentQuizzes,
-  getAverageScore,
-  getTotalTime,
-  getCategoriesCompleted,
-  getCurrentStreak,
-  getAchievements,
-  formatTimeAgo,
-  formatTime,
-  removeDuplicateQuizzes,
-  type QuizHistoryEntry,
-} from "@/lib/quiz-history";
-import { categories } from "@/lib/quiz-data";
-import { calculateLevel, getTotalXP, getUnlockedBadges } from "@/lib/leveling-system";
 
 export default function Dashboard() {
   const { isAuthenticated, user, getRemainingFreeQuizzes } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState({
-    totalQuizzes: 0,
-    averageScore: 0,
-    totalTime: 0,
-    achievements: 0,
-    currentStreak: 0,
-    categoriesCompleted: 0,
-  });
-  const [recentQuizzes, setRecentQuizzes] = useState<QuizHistoryEntry[]>([]);
-  const [userLevel, setUserLevel] = useState(calculateLevel(getTotalXP()));
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login?redirect=/dashboard");
-    } else {
-      // Clean up any existing duplicates
-      removeDuplicateQuizzes();
-      
-      // Load dynamic stats
-      const history = getRecentQuizzes(10);
-      setRecentQuizzes(history);
-      
-      setStats({
-        totalQuizzes: user?.quizzesCompleted || 0,
-        averageScore: getAverageScore(),
-        totalTime: getTotalTime(),
-        achievements: getAchievements(),
-        currentStreak: getCurrentStreak(),
-        categoriesCompleted: getCategoriesCompleted().length,
-      });
-      setUserLevel(calculateLevel(getTotalXP()));
-    }
-  }, [isAuthenticated, router, user?.quizzesCompleted]);
-
-  // Refresh stats when window gains focus (user might have completed a quiz in another tab)
-  useEffect(() => {
-    const handleFocus = () => {
-      if (isAuthenticated) {
-        const history = getRecentQuizzes(10);
-        setRecentQuizzes(history);
-        setStats({
-          totalQuizzes: user?.quizzesCompleted || 0,
-          averageScore: getAverageScore(),
-          totalTime: getTotalTime(),
-          achievements: getAchievements(),
-          currentStreak: getCurrentStreak(),
-          categoriesCompleted: getCategoriesCompleted().length,
-        });
-      }
-    };
-    
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [isAuthenticated, user?.quizzesCompleted]);
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
   const remaining = getRemainingFreeQuizzes();
   const quizzesCompleted = user?.quizzesCompleted || 0;
   const FREE_QUIZ_LIMIT = 12;
   const progress = (quizzesCompleted / FREE_QUIZ_LIMIT) * 100;
   const isFreeUser = user?.plan === "free" || !user?.plan;
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login?redirect=/dashboard");
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  const stats = {
+    totalQuizzes: quizzesCompleted,
+    averageScore: 85,
+    totalTime: 180,
+    achievements: 5,
+    currentStreak: 7,
+    categoriesCompleted: 4,
+  };
+
+  const recentQuizzes = [
+    { name: "Physics", score: 100, date: "2 days ago", time: "12:30" },
+    { name: "Chemistry", score: 80, date: "3 days ago", time: "14:15" },
+    { name: "Math", score: 90, date: "5 days ago", time: "11:45" },
+  ];
 
   return (
     <main className="container mx-auto px-4 py-8 lg:px-6">
@@ -102,24 +54,18 @@ export default function Dashboard() {
               Track your progress and achievements
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge className="bg-linear-to-r from-yellow-600/20 to-orange-600/20 text-yellow-400 border-yellow-500/50 px-4 py-2">
-              <Award className="mr-2 h-4 w-4" />
-              Level {userLevel.level}
+          {isFreeUser && (
+            <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/50 px-4 py-2">
+              <Zap className="mr-2 h-4 w-4" />
+              {remaining > 0 ? `${remaining} free left` : "Upgrade to Pro"}
             </Badge>
-            {isFreeUser && (
-              <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/50 px-4 py-2">
-                <Zap className="mr-2 h-4 w-4" />
-                {remaining > 0 ? `${remaining} free left` : "Upgrade to Pro"}
-              </Badge>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
       {/* Free Quiz Progress Card */}
       {isFreeUser && (
-        <Card className="mb-8 border-2 border-blue-500/50 bg-linear-to-r from-blue-600/10 to-cyan-600/10">
+        <Card className="mb-8 border-2 border-blue-500/50 bg-gradient-to-r from-blue-600/10 to-cyan-600/10">
           <CardHeader>
             <CardTitle className="text-xl text-white flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-blue-400" />
@@ -143,7 +89,7 @@ export default function Dashboard() {
                 <Progress value={progress} className="h-3" />
               </div>
               {remaining === 0 && (
-                <div className="flex items-center justify-between rounded-lg bg-linear-to-r from-blue-600/20 to-cyan-600/20 p-4 border border-blue-500/30">
+                <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-blue-600/20 to-cyan-600/20 p-4 border border-blue-500/30">
                   <div>
                     <p className="text-white font-semibold mb-1">
                       🎉 Amazing! You've completed all free quizzes!
@@ -154,7 +100,7 @@ export default function Dashboard() {
                   </div>
                   <Button
                     asChild
-                    className="bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
                   >
                     <Link href="/store">
                       <Crown className="mr-2 h-4 w-4" />
@@ -204,7 +150,7 @@ export default function Dashboard() {
             <Clock className="h-4 w-4 text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{formatTime(stats.totalTime)}</div>
+            <div className="text-2xl font-bold text-white">{stats.totalTime} min</div>
             <p className="text-xs text-slate-400 mt-1">Time spent learning</p>
           </CardContent>
         </Card>
@@ -244,7 +190,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {stats.categoriesCompleted}/{categories.length}
+              {stats.categoriesCompleted}/6
             </div>
             <p className="text-xs text-slate-400 mt-1">Categories completed</p>
           </CardContent>
@@ -259,42 +205,28 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {recentQuizzes.length > 0 ? (
-              recentQuizzes.map((quiz) => (
-                <div
-                  key={quiz.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-slate-700/50 border border-slate-600"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-linear-to-r from-blue-600 to-cyan-600">
-                      <BookOpen className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-white">{quiz.categoryName}</p>
-                      <p className="text-sm text-slate-400">
-                        {formatTimeAgo(quiz.completedAt)} • {formatTime(quiz.timeSpent)}
-                      </p>
-                    </div>
+            {recentQuizzes.map((quiz, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-4 rounded-lg bg-slate-700/50 border border-slate-600"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600">
+                    <BookOpen className="h-6 w-6 text-white" />
                   </div>
-                  <div className="text-right">
-                    <p className={`text-lg font-bold ${
-                      quiz.score >= 80 ? "text-green-400" : 
-                      quiz.score >= 60 ? "text-yellow-400" : 
-                      "text-red-400"
-                    }`}>
-                      {Math.round(quiz.score)}%
+                  <div>
+                    <p className="font-semibold text-white">{quiz.name}</p>
+                    <p className="text-sm text-slate-400">
+                      {quiz.date} • {quiz.time}
                     </p>
-                    <p className="text-xs text-slate-400">Score</p>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-slate-400">
-                <BookOpen className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No quizzes completed yet</p>
-                <p className="text-sm mt-1">Start taking quizzes to see your history here!</p>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-green-400">{quiz.score}%</p>
+                  <p className="text-xs text-slate-400">Score</p>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </CardContent>
       </Card>

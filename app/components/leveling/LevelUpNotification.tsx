@@ -45,13 +45,13 @@ export function LevelUpNotification({ newLevel, newBadges = [], onClose }: Level
         <CardContent className="pt-8 pb-6 text-center">
           {/* Level Up Animation */}
           <div className="mb-6">
-            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-linear-to-r from-yellow-500 to-orange-500 animate-pulse">
+            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 animate-pulse">
               <Trophy className="h-12 w-12 text-white" />
             </div>
             <h2 className="text-3xl font-bold text-white mb-2">
               Level Up! 🎉
             </h2>
-            <div className="text-6xl font-bold bg-linear-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
+            <div className="text-6xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
               Level {newLevel}
             </div>
           </div>
@@ -64,7 +64,7 @@ export function LevelUpNotification({ newLevel, newBadges = [], onClose }: Level
                 {newBadges.map((badge) => (
                   <Badge
                     key={badge.id}
-                    className={`bg-linear-to-r ${
+                    className={`bg-gradient-to-r ${
                       badge.rarity === "legendary"
                         ? "from-purple-600 to-pink-600"
                         : badge.rarity === "epic"

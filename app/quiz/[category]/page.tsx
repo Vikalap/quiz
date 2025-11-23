@@ -37,3 +37,4 @@ export default async function QuizPage({
   return <QuizInterface category={quiz} />;
 }
 
+

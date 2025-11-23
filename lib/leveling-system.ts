@@ -1,362 +1,239 @@
-import { getQuizHistory, type QuizHistoryEntry } from "./quiz-history";
+export type BadgeRarity = "common" | "rare" | "epic" | "legendary";
 
 export interface Badge {
   id: string;
   name: string;
-  description: string;
   icon: string;
-  rarity: "common" | "rare" | "epic" | "legendary";
-  unlockedAt?: string;
-  requiresSubscription?: boolean; // Premium-only badges
+  description: string;
+  rarity: BadgeRarity;
+  unlockedAt?: number; // Level at which badge is unlocked
+  condition?: string; // Condition description for unlocking
 }
 
-export interface UserLevel {
+export interface LevelInfo {
+  level: number;
+  xp: number;
+  xpRequired: number;
+  xpForNextLevel: number;
+}
+
+export interface UserProgress {
   level: number;
   xp: number;
   totalXp: number;
-  nextLevelXp: number;
-  progress: number;
+  badges: Badge[];
+  quizzesCompleted: number;
+  perfectScores: number;
+  streak: number;
 }
 
-const LEVEL_XP_REQUIREMENTS = [
-  0,    // Level 1
-  100,  // Level 2
-  250,  // Level 3
-  450,  // Level 4
-  700,  // Level 5
-  1000, // Level 6
-  1350, // Level 7
-  1750, // Level 8
-  2200, // Level 9
-  2700, // Level 10
-  3250, // Level 11
-  3850, // Level 12
-  4500, // Level 13
-  5200, // Level 14
-  5950, // Level 15
-  6750, // Level 16
-  7600, // Level 17
-  8500, // Level 18
-  9450, // Level 19
-  10450, // Level 20
-];
-
-// Calculate XP for a quiz based on score and time
-export function calculateQuizXP(score: number, timeSpent: number, totalQuestions: number): number {
-  // Base XP: 10 points per question
-  let baseXP = totalQuestions * 10;
-  
-  // Score multiplier: 0.5x to 1.5x based on score
-  const scoreMultiplier = 0.5 + (score / 100) * 1.0;
-  
-  // Time bonus: faster completion = bonus XP (up to 20% bonus)
-  const avgTimePerQuestion = 60; // 60 seconds per question average
-  const expectedTime = totalQuestions * avgTimePerQuestion;
-  const timeBonus = Math.max(0, (expectedTime - timeSpent) / expectedTime * 0.2);
-  
-  // Perfect score bonus: +50 XP
-  const perfectBonus = score === 100 ? 50 : 0;
-  
-  // Streak bonus: calculated elsewhere, but can add here
-  
-  const totalXP = Math.round(baseXP * scoreMultiplier * (1 + timeBonus) + perfectBonus);
-  return Math.max(10, totalXP); // Minimum 10 XP
+/**
+ * Calculate XP required for a specific level
+ * Using exponential formula: XP = 100 * level^1.5
+ */
+export function getXpForLevel(level: number): number {
+  if (level <= 1) return 0;
+  return Math.floor(100 * Math.pow(level, 1.5));
 }
 
-// Calculate current level and XP
-export function calculateLevel(totalXP: number): UserLevel {
+/**
+ * Calculate total XP needed to reach a level
+ */
+export function getTotalXpForLevel(level: number): number {
+  let total = 0;
+  for (let i = 2; i <= level; i++) {
+    total += getXpForLevel(i);
+  }
+  return total;
+}
+
+/**
+ * Calculate level from total XP
+ */
+export function getLevelFromXp(totalXp: number): number {
   let level = 1;
-  let xp = totalXP;
+  let xp = 0;
   
-  // Find current level
-  for (let i = LEVEL_XP_REQUIREMENTS.length - 1; i >= 0; i--) {
-    if (totalXP >= LEVEL_XP_REQUIREMENTS[i]) {
-      level = i + 1;
-      xp = totalXP - LEVEL_XP_REQUIREMENTS[i];
+  while (xp < totalXp) {
+    level++;
+    xp += getXpForLevel(level);
+    if (xp > totalXp) {
+      level--;
       break;
     }
   }
   
-  // Calculate next level XP requirement
-  const nextLevelIndex = level < LEVEL_XP_REQUIREMENTS.length ? level : LEVEL_XP_REQUIREMENTS.length - 1;
-  const nextLevelXp = LEVEL_XP_REQUIREMENTS[nextLevelIndex] - LEVEL_XP_REQUIREMENTS[level - 1];
-  const progress = nextLevelXp > 0 ? (xp / nextLevelXp) * 100 : 100;
+  return Math.max(1, level);
+}
+
+/**
+ * Calculate level info from current XP
+ */
+export function getLevelInfo(totalXp: number): LevelInfo {
+  const currentLevel = getLevelFromXp(totalXp);
+  const xpForCurrentLevel = getTotalXpForLevel(currentLevel);
+  const xpForNextLevel = getTotalXpForLevel(currentLevel + 1);
+  const xpRequired = totalXp - xpForCurrentLevel;
+  const xpForNext = xpForNextLevel - xpForCurrentLevel;
   
   return {
-    level,
-    xp,
-    totalXp: totalXP,
-    nextLevelXp,
-    progress: Math.min(100, progress),
+    level: currentLevel,
+    xp: xpRequired,
+    xpRequired: xpForNext - xpRequired,
+    xpForNextLevel: xpForNext,
   };
 }
 
-// Get total XP from quiz history
-export function getTotalXP(): number {
-  const history = getQuizHistory();
-  return history.reduce((total, entry) => {
-    return total + calculateQuizXP(entry.score, entry.timeSpent, entry.totalQuestions);
-  }, 0);
+/**
+ * Calculate XP earned from quiz completion
+ */
+export function calculateQuizXp(score: number, totalQuestions: number, timeLimit: number, timeUsed: number): number {
+  const baseXp = 10;
+  const scoreMultiplier = score / 100; // 0 to 1 based on percentage
+  const timeBonus = Math.max(0, (timeLimit - timeUsed) / timeLimit); // Bonus for finishing faster
+  
+  const xp = Math.floor(baseXp * totalQuestions * scoreMultiplier * (1 + timeBonus * 0.5));
+  return Math.max(1, xp); // Minimum 1 XP
 }
 
-// Badge definitions
-export const BADGES: Badge[] = [
+/**
+ * Available badges in the system
+ */
+export const availableBadges: Badge[] = [
   {
-    id: "first_quiz",
+    id: "first-quiz",
     name: "First Steps",
+    icon: "👶",
     description: "Complete your first quiz",
-    icon: "🎯",
     rarity: "common",
+    unlockedAt: 1,
+    condition: "Complete 1 quiz",
   },
   {
-    id: "perfect_score",
+    id: "perfect-score",
     name: "Perfect Score",
-    description: "Get 100% on any quiz",
     icon: "💯",
+    description: "Get 100% on a quiz",
     rarity: "rare",
+    condition: "Get a perfect score on any quiz",
   },
   {
-    id: "five_quizzes",
-    name: "Getting Started",
-    description: "Complete 5 quizzes",
-    icon: "⭐",
-    rarity: "common",
-  },
-  {
-    id: "ten_quizzes",
-    name: "Dedicated Learner",
-    description: "Complete 10 quizzes",
-    icon: "🌟",
-    rarity: "common",
-  },
-  {
-    id: "twenty_quizzes",
-    name: "Quiz Master",
-    description: "Complete 20 quizzes",
-    icon: "🏆",
-    rarity: "rare",
-  },
-  {
-    id: "fifty_quizzes",
-    name: "Quiz Legend",
-    description: "Complete 50 quizzes",
-    icon: "👑",
-    rarity: "epic",
-  },
-  {
-    id: "streak_5",
-    name: "On Fire",
-    description: "Maintain a 5-day streak",
-    icon: "🔥",
-    rarity: "rare",
-  },
-  {
-    id: "streak_10",
-    name: "Unstoppable",
-    description: "Maintain a 10-day streak",
-    icon: "⚡",
-    rarity: "epic",
-  },
-  {
-    id: "streak_30",
-    name: "Consistency King",
-    description: "Maintain a 30-day streak",
-    icon: "💎",
-    rarity: "legendary",
-  },
-  {
-    id: "all_categories",
-    name: "Category Master",
-    description: "Complete quizzes in all categories",
-    icon: "🎓",
-    rarity: "epic",
-  },
-  {
-    id: "level_5",
-    name: "Rising Star",
-    description: "Reach level 5",
-    icon: "⭐",
-    rarity: "common",
-  },
-  {
-    id: "level_10",
-    name: "Expert",
-    description: "Reach level 10",
-    icon: "🌟",
-    rarity: "rare",
-  },
-  {
-    id: "level_15",
-    name: "Master",
-    description: "Reach level 15",
-    icon: "🏆",
-    rarity: "epic",
-  },
-  {
-    id: "level_20",
-    name: "Grand Master",
-    description: "Reach level 20",
-    icon: "👑",
-    rarity: "legendary",
-  },
-  {
-    id: "average_80",
-    name: "High Achiever",
-    description: "Maintain 80%+ average score (10+ quizzes)",
-    icon: "📈",
-    rarity: "rare",
-  },
-  {
-    id: "speed_demon",
+    id: "speed-demon",
     name: "Speed Demon",
-    description: "Complete a quiz in under 2 minutes",
     icon: "⚡",
-    rarity: "epic",
+    description: "Complete a quiz in under 5 minutes",
+    rarity: "rare",
+    condition: "Finish a quiz in less than 5 minutes",
   },
   {
-    id: "premium_member",
-    name: "Premium Member",
-    description: "Upgrade to Pro or Premium plan",
+    id: "quiz-master",
+    name: "Quiz Master",
+    icon: "🎓",
+    description: "Complete 10 quizzes",
+    rarity: "epic",
+    unlockedAt: 5,
+    condition: "Complete 10 quizzes",
+  },
+  {
+    id: "category-expert",
+    name: "Category Expert",
+    icon: "🏆",
+    description: "Perfect score in all categories",
+    rarity: "epic",
+    condition: "Get 100% in all 6 categories",
+  },
+  {
+    id: "streak-master",
+    name: "Streak Master",
+    icon: "🔥",
+    description: "Maintain a 7-day streak",
+    rarity: "epic",
+    condition: "Complete quizzes 7 days in a row",
+  },
+  {
+    id: "level-10",
+    name: "Decade Champion",
     icon: "👑",
+    description: "Reach level 10",
     rarity: "legendary",
-    requiresSubscription: true,
+    unlockedAt: 10,
+    condition: "Reach level 10",
   },
   {
-    id: "unlimited_champion",
-    name: "Unlimited Champion",
-    description: "Complete 100+ quizzes (Premium feature)",
-    icon: "🏅",
+    id: "level-25",
+    name: "Elite Scholar",
+    icon: "🌟",
+    description: "Reach level 25",
     rarity: "legendary",
-    requiresSubscription: true,
+    unlockedAt: 25,
+    condition: "Reach level 25",
   },
   {
-    id: "pro_achiever",
-    name: "Pro Achiever",
-    description: "Reach level 25 as a Pro member",
-    icon: "⭐",
-    rarity: "epic",
-    requiresSubscription: true,
+    id: "level-50",
+    name: "Grandmaster",
+    icon: "💎",
+    description: "Reach level 50",
+    rarity: "legendary",
+    unlockedAt: 50,
+    condition: "Reach level 50",
   },
 ];
 
-const BADGES_KEY = "quizhub_badges";
-
-// Get unlocked badges
-export function getUnlockedBadges(): Badge[] {
-  if (typeof window === "undefined") return [];
+/**
+ * Check which badges should be unlocked based on user progress
+ */
+export function checkBadgeUnlocks(
+  currentBadges: Badge[],
+  progress: UserProgress
+): Badge[] {
+  const unlockedBadgeIds = new Set(currentBadges.map((b) => b.id));
+  const newBadges: Badge[] = [];
   
-  try {
-    const stored = localStorage.getItem(BADGES_KEY);
-    if (!stored) return [];
-    const badgeIds = JSON.parse(stored);
-    return BADGES.filter(badge => badgeIds.includes(badge.id));
-  } catch {
-    return [];
-  }
-}
-
-// Unlock a badge
-export function unlockBadge(badgeId: string): boolean {
-  if (typeof window === "undefined") return false;
-  
-  const unlocked = getUnlockedBadges();
-  if (unlocked.some(b => b.id === badgeId)) {
-    return false; // Already unlocked
-  }
-  
-  const badge = BADGES.find(b => b.id === badgeId);
-  if (!badge) return false;
-  
-  badge.unlockedAt = new Date().toISOString();
-  const badgeIds = unlocked.map(b => b.id).concat([badgeId]);
-  localStorage.setItem(BADGES_KEY, JSON.stringify(badgeIds));
-  return true;
-}
-
-// Check and unlock badges based on user progress
-export function checkAndUnlockBadges(userPlan?: "free" | "pro" | "premium"): string[] {
-  const history = getQuizHistory();
-  const totalXP = getTotalXP();
-  const level = calculateLevel(totalXP);
-  const unlocked: string[] = [];
-  const isSubscribed = userPlan === "pro" || userPlan === "premium";
-  
-  // First quiz
-  if (history.length >= 1 && !getUnlockedBadges().some(b => b.id === "first_quiz")) {
-    if (unlockBadge("first_quiz")) unlocked.push("first_quiz");
-  }
-  
-  // Perfect score
-  if (history.some(e => e.score === 100) && !getUnlockedBadges().some(b => b.id === "perfect_score")) {
-    if (unlockBadge("perfect_score")) unlocked.push("perfect_score");
-  }
-  
-  // Quiz count badges
-  if (history.length >= 5 && !getUnlockedBadges().some(b => b.id === "five_quizzes")) {
-    if (unlockBadge("five_quizzes")) unlocked.push("five_quizzes");
-  }
-  if (history.length >= 10 && !getUnlockedBadges().some(b => b.id === "ten_quizzes")) {
-    if (unlockBadge("ten_quizzes")) unlocked.push("ten_quizzes");
-  }
-  if (history.length >= 20 && !getUnlockedBadges().some(b => b.id === "twenty_quizzes")) {
-    if (unlockBadge("twenty_quizzes")) unlocked.push("twenty_quizzes");
-  }
-  if (history.length >= 50 && !getUnlockedBadges().some(b => b.id === "fifty_quizzes")) {
-    if (unlockBadge("fifty_quizzes")) unlocked.push("fifty_quizzes");
-  }
-  
-  // Level badges
-  if (level.level >= 5 && !getUnlockedBadges().some(b => b.id === "level_5")) {
-    if (unlockBadge("level_5")) unlocked.push("level_5");
-  }
-  if (level.level >= 10 && !getUnlockedBadges().some(b => b.id === "level_10")) {
-    if (unlockBadge("level_10")) unlocked.push("level_10");
-  }
-  if (level.level >= 15 && !getUnlockedBadges().some(b => b.id === "level_15")) {
-    if (unlockBadge("level_15")) unlocked.push("level_15");
-  }
-  if (level.level >= 20 && !getUnlockedBadges().some(b => b.id === "level_20")) {
-    if (unlockBadge("level_20")) unlocked.push("level_20");
-  }
-  
-  // Average score badge
-  if (history.length >= 10) {
-    const avgScore = history.reduce((sum, e) => sum + e.score, 0) / history.length;
-    if (avgScore >= 80 && !getUnlockedBadges().some(b => b.id === "average_80")) {
-      if (unlockBadge("average_80")) unlocked.push("average_80");
-    }
-  }
-  
-  // Speed demon badge
-  if (history.some(e => e.timeSpent < 120) && !getUnlockedBadges().some(b => b.id === "speed_demon")) {
-    if (unlockBadge("speed_demon")) unlocked.push("speed_demon");
-  }
-  
-  // All categories badge
-  const uniqueCategories = new Set(history.map(e => e.category));
-  const { categories } = require("./quiz-data");
-  if (uniqueCategories.size >= categories.length && !getUnlockedBadges().some(b => b.id === "all_categories")) {
-    if (unlockBadge("all_categories")) unlocked.push("all_categories");
-  }
-  
-  // Premium-only badges (only check if user is subscribed)
-  if (isSubscribed) {
-    // Premium Member badge
-    if (!getUnlockedBadges().some(b => b.id === "premium_member")) {
-      if (unlockBadge("premium_member")) unlocked.push("premium_member");
+  for (const badge of availableBadges) {
+    if (unlockedBadgeIds.has(badge.id)) continue;
+    
+    let shouldUnlock = false;
+    
+    // Check level-based unlocks
+    if (badge.unlockedAt && progress.level >= badge.unlockedAt) {
+      shouldUnlock = true;
     }
     
-    // Unlimited Champion (100+ quizzes)
-    if (history.length >= 100 && !getUnlockedBadges().some(b => b.id === "unlimited_champion")) {
-      if (unlockBadge("unlimited_champion")) unlocked.push("unlimited_champion");
+    // Check condition-based unlocks
+    switch (badge.id) {
+      case "first-quiz":
+        shouldUnlock = progress.quizzesCompleted >= 1;
+        break;
+      case "perfect-score":
+        shouldUnlock = progress.perfectScores >= 1;
+        break;
+      case "quiz-master":
+        shouldUnlock = progress.quizzesCompleted >= 10;
+        break;
+      case "streak-master":
+        shouldUnlock = progress.streak >= 7;
+        break;
     }
     
-    // Pro Achiever (Level 25+)
-    if (level.level >= 25 && !getUnlockedBadges().some(b => b.id === "pro_achiever")) {
-      if (unlockBadge("pro_achiever")) unlocked.push("pro_achiever");
+    if (shouldUnlock) {
+      newBadges.push({ ...badge, unlockedAt: progress.level });
     }
   }
   
-  return unlocked;
+  return newBadges;
+}
+
+/**
+ * Check if user leveled up and return level difference
+ */
+export function checkLevelUp(oldXp: number, newXp: number): number | null {
+  const oldLevel = getLevelFromXp(oldXp);
+  const newLevel = getLevelFromXp(newXp);
+  
+  if (newLevel > oldLevel) {
+    return newLevel;
+  }
+  
+  return null;
 }
 

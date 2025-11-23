@@ -79,7 +79,7 @@ export default function Store() {
 
       {/* Progress Card for Free Users */}
       {isFreeUser && (
-        <Card className="mb-8 border-2 border-blue-500/50 bg-linear-to-r from-blue-600/10 to-cyan-600/10">
+        <Card className="mb-8 border-2 border-blue-500/50 bg-gradient-to-r from-blue-600/10 to-cyan-600/10">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -112,7 +112,7 @@ export default function Store() {
                 <Progress value={progress} className="h-3" />
               </div>
               {remaining === 0 && (
-                <div className="rounded-lg bg-linear-to-r from-blue-600/20 to-cyan-600/20 p-4 border border-blue-500/30">
+                <div className="rounded-lg bg-gradient-to-r from-blue-600/20 to-cyan-600/20 p-4 border border-blue-500/30">
                   <p className="text-center text-white font-semibold mb-2">
                     🎉 Amazing! You've completed all free quizzes!
                   </p>
@@ -124,7 +124,7 @@ export default function Store() {
                       const proCard = document.getElementById("pro-pack");
                       proCard?.scrollIntoView({ behavior: "smooth", block: "center" });
                     }}
-                    className="w-full bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
                   >
                     <Crown className="mr-2 h-4 w-4" />
                     Upgrade to Pro
@@ -152,24 +152,23 @@ export default function Store() {
                 : "border-slate-700"
             }`}
           >
-            {/* Badge Container - handles both badges without overlap */}
-            {(pkg.popular || (isFreeUser && remaining === 0 && isPro)) && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 items-center z-10">
-                {pkg.popular && (
-                  <Badge className="bg-linear-to-r from-blue-600 to-cyan-600 whitespace-nowrap">
-                    <Sparkles className="mr-1 h-3 w-3" />
-                    Most Popular
-                  </Badge>
-                )}
-                {isFreeUser && remaining === 0 && isPro && (
-                  <Badge className="bg-linear-to-r from-yellow-500 to-orange-500 animate-pulse whitespace-nowrap">
-                    <Zap className="mr-1 h-3 w-3" />
-                    Recommended
-                  </Badge>
-                )}
+            {pkg.popular && (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                <Badge className="bg-gradient-to-r from-blue-600 to-cyan-600">
+                  <Sparkles className="mr-1 h-3 w-3" />
+                  Most Popular
+                </Badge>
               </div>
             )}
-            <CardHeader className={pkg.popular || (isFreeUser && remaining === 0 && isPro) ? "pt-8" : ""}>
+            {isFreeUser && remaining === 0 && isPro && (
+              <div className="absolute -top-4 right-4">
+                <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 animate-pulse">
+                  <Zap className="mr-1 h-3 w-3" />
+                  Recommended
+                </Badge>
+              </div>
+            )}
+            <CardHeader>
               <CardTitle className="text-2xl">{pkg.name}</CardTitle>
               <CardDescription>{pkg.description}</CardDescription>
               <div className="mt-4">
@@ -191,7 +190,7 @@ export default function Store() {
               <Button
                 className={`w-full ${
                   pkg.popular
-                    ? "bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                    ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
                     : ""
                 }`}
                 variant={pkg.popular ? "default" : "outline"}

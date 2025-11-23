@@ -14,11 +14,11 @@ export function AuthPrompt() {
   }
 
   return (
-    <section className="py-12 lg:py-20 bg-linear    -to-b from-slate-800/50 to-transparent">
+    <section className="py-12 lg:py-20 bg-gradient-to-b from-slate-800/50 to-transparent">
       <div className="container mx-auto px-4 lg:px-6">
-        <Card className="max-w-4xl mx-auto border-blue-500/50 bg-linear-to-br from-slate-800 to-slate-900">
+        <Card className="max-w-4xl mx-auto border-blue-500/50 bg-gradient-to-br from-slate-800 to-slate-900">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-linear-to-r from-blue-600 to-cyan-600">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-cyan-600">
               <Trophy className="h-8 w-8 text-white" />
             </div>
             <CardTitle className="text-3xl">Unlock Full Features</CardTitle>
@@ -54,7 +54,7 @@ export function AuthPrompt() {
               <Button
                 asChild
                 size="lg"
-                className="bg-linear-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
               >
                 <Link href="/signup">
                   <UserPlus className="mr-2 h-5 w-5" />
@@ -74,4 +74,5 @@ export function AuthPrompt() {
     </section>
   );
 }
+
 

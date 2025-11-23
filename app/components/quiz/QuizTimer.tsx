@@ -56,3 +56,4 @@ export function QuizTimer({ timeLimit, onTimeUp }: QuizTimerProps) {
   );
 }
 
+
