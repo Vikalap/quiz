@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "../providers/AuthProvider";
 import { SubscriptionGate } from "../subscription/SubscriptionGate";
 import { saveQuizHistory } from "@/lib/quiz-history";
+import { calculateQuizXP, calculateLevel, getTotalXP, checkAndUnlockBadges, BADGES, type Badge as BadgeType } from "@/lib/leveling-system";
+import { LevelUpNotification } from "../leveling/LevelUpNotification";
 
 interface QuizResults {
   category: string;
@@ -27,10 +29,11 @@ interface QuizResults {
 
 export function QuizResults() {
   const router = useRouter();
-  const { isAuthenticated, incrementQuizCount, canTakeQuiz, getRemainingFreeQuizzes } = useAuth();
+  const { isAuthenticated, user, incrementQuizCount, canTakeQuiz, getRemainingFreeQuizzes } = useAuth();
   const [results, setResults] = useState<QuizResults | null>(null);
   const hasProcessedRef = useRef(false);
   const [showSubscriptionGate, setShowSubscriptionGate] = useState(false);
+  const [levelUpData, setLevelUpData] = useState<{ level: number; badges: BadgeType[] } | null>(null);
 
   useEffect(() => {
     const storedResults = sessionStorage.getItem("quizResults");
@@ -41,6 +44,10 @@ export function QuizResults() {
       // Process quiz completion only once
       if (isAuthenticated && !hasProcessedRef.current) {
         hasProcessedRef.current = true;
+        
+        // Get previous level before saving
+        const previousXP = getTotalXP();
+        const previousLevel = calculateLevel(previousXP);
         
         // Increment quiz count
         incrementQuizCount();
@@ -54,6 +61,29 @@ export function QuizResults() {
           totalQuestions: parsedResults.totalQuestions,
           timeSpent: parsedResults.timeSpent,
         });
+        
+        // Check for level up and badges
+        const newXP = getTotalXP();
+        const newLevel = calculateLevel(newXP);
+        const newBadges = checkAndUnlockBadges(user?.plan);
+        
+        // Show level up notification if leveled up
+        if (newLevel.level > previousLevel.level) {
+          setTimeout(() => {
+            setLevelUpData({
+              level: newLevel.level,
+              badges: newBadges.map(id => BADGES.find(b => b.id === id)).filter((b): b is BadgeType => b !== undefined),
+            });
+          }, 1500);
+        } else if (newBadges.length > 0) {
+          // Show badge notification even without level up
+          setTimeout(() => {
+            setLevelUpData({
+              level: newLevel.level,
+              badges: newBadges.map(id => BADGES.find(b => b.id === id)).filter((b): b is BadgeType => b !== undefined),
+            });
+          }, 1500);
+        }
         
         // Check if user needs to upgrade after completing this quiz
         setTimeout(() => {
@@ -101,7 +131,15 @@ export function QuizResults() {
   const seconds = results.timeSpent % 60;
 
   return (
-    <div className="container mx-auto px-4 py-8 lg:px-6 max-w-4xl">
+    <>
+      {levelUpData ? (
+        <LevelUpNotification
+          newLevel={levelUpData.level}
+          newBadges={levelUpData.badges}
+          onClose={() => setLevelUpData(null)}
+        />
+      ) : null}
+      <div className="container mx-auto px-4 py-8 lg:px-6 max-w-4xl">
       {/* Results Summary */}
       <Card className="mb-8">
         <CardHeader className="text-center">
@@ -249,6 +287,7 @@ export function QuizResults() {
         </Button>
       </div>
     </div>
+    </>
   );
 }
 
