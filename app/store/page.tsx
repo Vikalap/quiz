@@ -4,7 +4,7 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Check, ShoppingCart, Star, Zap } from "lucide-react";
 import { useAuth } from "../components/providers/AuthProvider";
-import { useRouter } from "next/router";
+import { useRouter } from "next/navigation";
 
 export default function Store() {
   const { isAuthenticated, user, updateUser } = useAuth();
