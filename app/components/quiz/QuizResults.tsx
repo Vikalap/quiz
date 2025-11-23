@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -29,7 +29,7 @@ export function QuizResults() {
   const router = useRouter();
   const { isAuthenticated, incrementQuizCount, canTakeQuiz, getRemainingFreeQuizzes } = useAuth();
   const [results, setResults] = useState<QuizResults | null>(null);
-  const [hasIncremented, setHasIncremented] = useState(false);
+  const hasProcessedRef = useRef(false);
   const [showSubscriptionGate, setShowSubscriptionGate] = useState(false);
 
   useEffect(() => {
@@ -38,12 +38,14 @@ export function QuizResults() {
       const parsedResults = JSON.parse(storedResults);
       setResults(parsedResults);
       
-      // Increment quiz count only once when results are loaded
-      if (isAuthenticated && !hasIncremented) {
-        incrementQuizCount();
-        setHasIncremented(true);
+      // Process quiz completion only once
+      if (isAuthenticated && !hasProcessedRef.current) {
+        hasProcessedRef.current = true;
         
-        // Save quiz to history
+        // Increment quiz count
+        incrementQuizCount();
+        
+        // Save quiz to history (only once)
         saveQuizHistory({
           category: parsedResults.category,
           categoryName: parsedResults.categoryName,
@@ -63,7 +65,7 @@ export function QuizResults() {
     } else {
       router.push("/");
     }
-  }, [router, isAuthenticated, hasIncremented, incrementQuizCount, canTakeQuiz]);
+  }, [router, isAuthenticated, incrementQuizCount, canTakeQuiz]);
 
   if (showSubscriptionGate) {
     return <SubscriptionGate onClose={() => setShowSubscriptionGate(false)} />;
