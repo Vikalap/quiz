@@ -1,0 +1,167 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { useAuth } from "../components/providers/AuthProvider";
+import { Progress } from "../components/ui/progress";
+import { Trophy, Target, Clock, TrendingUp, Award, BookOpen } from "lucide-react";
+
+export default function Dashboard() {
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login?redirect=/dashboard");
+    }
+  }, [isAuthenticated, router]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  const stats = {
+    totalQuizzes: 12,
+    averageScore: 85,
+    totalTime: 180,
+    achievements: 5,
+    currentStreak: 7,
+    categoriesCompleted: 4,
+  };
+
+  const recentQuizzes = [
+    { name: "Physics", score: 100, date: "2 days ago", time: "12:30" },
+    { name: "Chemistry", score: 80, date: "3 days ago", time: "14:15" },
+    { name: "Math", score: 90, date: "5 days ago", time: "11:45" },
+  ];
+
+  return (
+    <main className="container mx-auto px-4 py-8 lg:px-6">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-white">Dashboard</h1>
+        <p className="mt-2 text-lg text-slate-400">
+          Track your progress and achievements
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-slate-400">
+              Total Quizzes
+            </CardTitle>
+            <BookOpen className="h-4 w-4 text-blue-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{stats.totalQuizzes}</div>
+            <p className="text-xs text-slate-400 mt-1">Completed quizzes</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-slate-400">
+              Average Score
+            </CardTitle>
+            <Target className="h-4 w-4 text-green-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{stats.averageScore}%</div>
+            <Progress value={stats.averageScore} className="mt-2" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-slate-400">
+              Total Time
+            </CardTitle>
+            <Clock className="h-4 w-4 text-purple-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{stats.totalTime} min</div>
+            <p className="text-xs text-slate-400 mt-1">Time spent learning</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-slate-400">
+              Achievements
+            </CardTitle>
+            <Trophy className="h-4 w-4 text-yellow-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{stats.achievements}</div>
+            <p className="text-xs text-slate-400 mt-1">Unlocked badges</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-slate-400">
+              Current Streak
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-orange-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{stats.currentStreak} days</div>
+            <p className="text-xs text-slate-400 mt-1">Keep it up!</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-slate-400">
+              Categories
+            </CardTitle>
+            <Award className="h-4 w-4 text-cyan-400" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">
+              {stats.categoriesCompleted}/6
+            </div>
+            <p className="text-xs text-slate-400 mt-1">Categories completed</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Quizzes */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Quizzes</CardTitle>
+          <CardDescription>Your latest quiz attempts</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {recentQuizzes.map((quiz, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-4 rounded-lg bg-slate-700/50 border border-slate-600"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600">
+                    <BookOpen className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white">{quiz.name}</p>
+                    <p className="text-sm text-slate-400">
+                      {quiz.date} • {quiz.time}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-green-400">{quiz.score}%</p>
+                  <p className="text-xs text-slate-400">Score</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
