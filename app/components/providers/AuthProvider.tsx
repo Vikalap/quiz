@@ -7,6 +7,7 @@ interface User {
   name: string;
   email: string;
   plan?: "free" | "pro" | "premium";
+  quizzesCompleted?: number;
 }
 
 interface AuthContextType {
@@ -16,6 +17,9 @@ interface AuthContextType {
   signup: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateUser: (user: Partial<User>) => void;
+  incrementQuizCount: () => void;
+  canTakeQuiz: () => boolean;
+  getRemainingFreeQuizzes: () => number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,7 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedUser = localStorage.getItem("quizhub_user");
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        setUser({ ...parsed, quizzesCompleted: parsed.quizzesCompleted || 0 });
       } catch (error) {
         localStorage.removeItem("quizhub_user");
       }
@@ -43,12 +48,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // For demo purposes, accept any email/password
     // In production, this would call your authentication API
-    const demoUser: User = {
-      id: "1",
-      name: email.split("@")[0],
-      email: email,
-      plan: "free",
-    };
+    const storedUser = localStorage.getItem("quizhub_user");
+    let demoUser: User;
+    
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        if (parsed.email === email) {
+          demoUser = { ...parsed, quizzesCompleted: parsed.quizzesCompleted || 0 };
+        } else {
+          demoUser = {
+            id: "1",
+            name: email.split("@")[0],
+            email: email,
+            plan: "free",
+            quizzesCompleted: 0,
+          };
+        }
+      } catch {
+        demoUser = {
+          id: "1",
+          name: email.split("@")[0],
+          email: email,
+          plan: "free",
+          quizzesCompleted: 0,
+        };
+      }
+    } else {
+      demoUser = {
+        id: "1",
+        name: email.split("@")[0],
+        email: email,
+        plan: "free",
+        quizzesCompleted: 0,
+      };
+    }
 
     setUser(demoUser);
     localStorage.setItem("quizhub_user", JSON.stringify(demoUser));
@@ -70,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: name,
       email: email,
       plan: "free",
+      quizzesCompleted: 0,
     };
 
     setUser(newUser);
@@ -90,6 +125,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const incrementQuizCount = () => {
+    if (user) {
+      const updatedUser = {
+        ...user,
+        quizzesCompleted: (user.quizzesCompleted || 0) + 1,
+      };
+      setUser(updatedUser);
+      localStorage.setItem("quizhub_user", JSON.stringify(updatedUser));
+    }
+  };
+
+  const FREE_QUIZ_LIMIT = 12;
+
+  const canTakeQuiz = (): boolean => {
+    if (!user) return false;
+    if (user.plan === "pro" || user.plan === "premium") return true;
+    return (user.quizzesCompleted || 0) < FREE_QUIZ_LIMIT;
+  };
+
+  const getRemainingFreeQuizzes = (): number => {
+    if (!user) return 0;
+    if (user.plan === "pro" || user.plan === "premium") return Infinity;
+    return Math.max(0, FREE_QUIZ_LIMIT - (user.quizzesCompleted || 0));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -99,6 +159,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signup,
         logout,
         updateUser,
+        incrementQuizCount,
+        canTakeQuiz,
+        getRemainingFreeQuizzes,
       }}
     >
       {children}

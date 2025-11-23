@@ -5,11 +5,19 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { useAuth } from "../components/providers/AuthProvider";
 import { Progress } from "../components/ui/progress";
-import { Trophy, Target, Clock, TrendingUp, Award, BookOpen } from "lucide-react";
+import { Trophy, Target, Clock, TrendingUp, Award, BookOpen, Zap, Crown } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import Link from "next/link";
 
 export default function Dashboard() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, getRemainingFreeQuizzes } = useAuth();
   const router = useRouter();
+  const remaining = getRemainingFreeQuizzes();
+  const quizzesCompleted = user?.quizzesCompleted || 0;
+  const FREE_QUIZ_LIMIT = 12;
+  const progress = (quizzesCompleted / FREE_QUIZ_LIMIT) * 100;
+  const isFreeUser = user?.plan === "free" || !user?.plan;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -22,7 +30,7 @@ export default function Dashboard() {
   }
 
   const stats = {
-    totalQuizzes: 12,
+    totalQuizzes: quizzesCompleted,
     averageScore: 85,
     totalTime: 180,
     achievements: 5,
@@ -39,11 +47,72 @@ export default function Dashboard() {
   return (
     <main className="container mx-auto px-4 py-8 lg:px-6">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white">Dashboard</h1>
-        <p className="mt-2 text-lg text-slate-400">
-          Track your progress and achievements
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-white">Dashboard</h1>
+            <p className="mt-2 text-lg text-slate-400">
+              Track your progress and achievements
+            </p>
+          </div>
+          {isFreeUser && (
+            <Badge className="bg-blue-600/20 text-blue-400 border-blue-500/50 px-4 py-2">
+              <Zap className="mr-2 h-4 w-4" />
+              {remaining > 0 ? `${remaining} free left` : "Upgrade to Pro"}
+            </Badge>
+          )}
+        </div>
       </div>
+
+      {/* Free Quiz Progress Card */}
+      {isFreeUser && (
+        <Card className="mb-8 border-2 border-blue-500/50 bg-gradient-to-r from-blue-600/10 to-cyan-600/10">
+          <CardHeader>
+            <CardTitle className="text-xl text-white flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-400" />
+              Your Free Quiz Progress
+            </CardTitle>
+            <CardDescription className="text-slate-300">
+              {remaining > 0 
+                ? `You have ${remaining} free ${remaining === 1 ? 'quiz' : 'quizzes'} remaining!`
+                : "You've completed all free quizzes! Upgrade to continue learning."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-slate-400">Free Quizzes Used</span>
+                  <span className="font-semibold text-white">
+                    {quizzesCompleted} / {FREE_QUIZ_LIMIT}
+                  </span>
+                </div>
+                <Progress value={progress} className="h-3" />
+              </div>
+              {remaining === 0 && (
+                <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-blue-600/20 to-cyan-600/20 p-4 border border-blue-500/30">
+                  <div>
+                    <p className="text-white font-semibold mb-1">
+                      🎉 Amazing! You've completed all free quizzes!
+                    </p>
+                    <p className="text-sm text-slate-300">
+                      Upgrade now to unlock unlimited quizzes and advanced features.
+                    </p>
+                  </div>
+                  <Button
+                    asChild
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                  >
+                    <Link href="/store">
+                      <Crown className="mr-2 h-4 w-4" />
+                      Upgrade
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">

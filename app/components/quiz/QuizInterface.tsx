@@ -9,6 +9,8 @@ import { Progress } from "../ui/progress";
 import { Card } from "../ui/card";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import type { QuizCategory } from "@/lib/quiz-data";
+import { useAuth } from "../providers/AuthProvider";
+import { SubscriptionGate } from "../subscription/SubscriptionGate";
 
 interface QuizInterfaceProps {
   category: QuizCategory;
@@ -16,6 +18,8 @@ interface QuizInterfaceProps {
 
 export function QuizInterface({ category }: QuizInterfaceProps) {
   const router = useRouter();
+  const { isAuthenticated, canTakeQuiz } = useAuth();
+  const [showSubscriptionGate, setShowSubscriptionGate] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(
     new Array(category.questions.length).fill(null)
@@ -23,9 +27,19 @@ export function QuizInterface({ category }: QuizInterfaceProps) {
   const [isCompleted, setIsCompleted] = useState(false);
   const [startTime] = useState(Date.now());
 
+  useEffect(() => {
+    if (isAuthenticated && !canTakeQuiz()) {
+      setShowSubscriptionGate(true);
+    }
+  }, [isAuthenticated, canTakeQuiz]);
+
   const currentQuestion = category.questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / category.questions.length) * 100;
   const answeredCount = answers.filter((a) => a !== null).length;
+
+  if (showSubscriptionGate) {
+    return <SubscriptionGate onClose={() => router.push("/categories")} />;
+  }
 
   const handleAnswerSelect = (answerIndex: number) => {
     const newAnswers = [...answers];
