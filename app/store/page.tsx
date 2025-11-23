@@ -152,23 +152,24 @@ export default function Store() {
                 : "border-slate-700"
             }`}
           >
-            {pkg.popular && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                <Badge className="bg-linear-to-r from-blue-600 to-cyan-600">
-                  <Sparkles className="mr-1 h-3 w-3" />
-                  Most Popular
-                </Badge>
+            {/* Badge Container - handles both badges without overlap */}
+            {(pkg.popular || (isFreeUser && remaining === 0 && isPro)) && (
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 items-center z-10">
+                {pkg.popular && (
+                  <Badge className="bg-linear-to-r from-blue-600 to-cyan-600 whitespace-nowrap">
+                    <Sparkles className="mr-1 h-3 w-3" />
+                    Most Popular
+                  </Badge>
+                )}
+                {isFreeUser && remaining === 0 && isPro && (
+                  <Badge className="bg-linear-to-r from-yellow-500 to-orange-500 animate-pulse whitespace-nowrap">
+                    <Zap className="mr-1 h-3 w-3" />
+                    Recommended
+                  </Badge>
+                )}
               </div>
             )}
-            {isFreeUser && remaining === 0 && isPro && (
-              <div className="absolute -top-4 right-4">
-                <Badge className="bg-linear-to-r from-yellow-500 to-orange-500 animate-pulse">
-                  <Zap className="mr-1 h-3 w-3" />
-                  Recommended
-                </Badge>
-              </div>
-            )}
-            <CardHeader>
+            <CardHeader className={pkg.popular || (isFreeUser && remaining === 0 && isPro) ? "pt-8" : ""}>
               <CardTitle className="text-2xl">{pkg.name}</CardTitle>
               <CardDescription>{pkg.description}</CardDescription>
               <div className="mt-4">
